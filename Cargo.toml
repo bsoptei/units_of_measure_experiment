@@ -1,0 +1,8 @@
+[package]
+name = "units_of_measure_experiment"
+version = "0.1.0"
+authors = ["bsoptei <bsoptei@gmail.com>"]
+
+[dependencies]
+derive_more = "0.13.0"
+num-traits = "0.2"
