@@ -67,6 +67,29 @@ mod test {
     }
 
     #[test]
+    fn temperature_arithmetic() {
+        assert_eq!(
+            Celsius(33.3),
+            Celsius(10.0) + Celsius(23.3)
+        );
+
+        assert_eq!(
+            Celsius(-13.3),
+            Celsius(10.0) - Celsius(23.3)
+        );
+
+        assert_eq!(
+            Celsius(33.3),
+            Celsius(11.1) * 3.0
+        );
+
+        assert_eq!(
+            Celsius(25.0),
+            Celsius(100.0) / 4.0
+        );
+    }
+
+    #[test]
     fn mean_temp() {
         assert_eq!(
             Celsius(11.5),
