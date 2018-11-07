@@ -6,13 +6,13 @@ use num_traits::*;
 use std::iter::Sum;
 
 #[derive(Add, Div, Mul, Sub, PartialEq, PartialOrd, Debug)]
-pub struct Celsius<Value: Num>(Value);
+pub struct Celsius<Value: Num>(pub Value);
 
 #[derive(Add, Div, Mul, Sub, PartialEq, PartialOrd, Debug)]
-pub struct Kelvin<Value: Num>(Value);
+pub struct Kelvin<Value: Num>(pub Value);
 
 #[derive(Add, Div, Mul, Sub, PartialEq, PartialOrd, Debug)]
-pub struct Fahrenheit<Value: Num>(Value);
+pub struct Fahrenheit<Value: Num>(pub Value);
 
 impl Into<Fahrenheit<f64>> for Celsius<f64> {
     fn into(self) -> Fahrenheit<f64> {
