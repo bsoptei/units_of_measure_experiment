@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blog post</title>
+</head>
+<body>
+
+<p>Back in the 1990s, there was a space probe called the Mars Climate Orbiter.The objective of its mission - in a nutshell - was to perform measurements related to the atmosphere and climate of the red planet. The probe never completed its mission.</p>
+<p>There were several (mostly human) errors that led to the failure. One of them, the tip of the iceberg, <a class="link" href="https://www.jpl.nasa.gov/releases/99/mcoloss1.html" target="_blank">sounds quite unbelievable:</a>
+</p>
+<div class="doc">
+    <p>"The peer review preliminary findings indicate that one team used English units (e.g., inches, feet and pounds) while the other used metric units for a key spacecraft operation."</p>
+</div>
+<p>Inspired by this notorious episode in the history of science and engineering, I started to think about how to create custom types to represent units of measure (which is one part of handling such challenges) in a statically typed programming language such as <a class="link" href="" target="_blank">Rust</a>, an exciting language I’m currently learning.
+</p>
+<p>If you want to reproduce the things that happen in this post, I recommend using a recent version of stable Rust (I’m using 1.30). I have a <a class="link" href="" target="_blank">repository on GitHub</a>, feel free to clone it and do some hacking!</p>
+<p>The simplest thing to do is to define a struct with a single unnamed argument. Such as
+</p>
+<p>pub struct Celsius(pub f64);
+</p>
+<p>It’s simple, has information about the unit, can be easily constructed</p>
+<p>let water_temperature = Celsius(42.0);</p>
+<p>and the value can be easily extracted,</p>
+<p>let water_temperature_value = water_temperature.0;
+</p>
+<p>and it can be used to define constants</p>
+<p>pub const ABSOLUTE_ZERO_TEMPERATURE: Celsius = Celsius(-273.15);
+</p>
+<p>But most importantly, making units of measure explicit makes developers (and the compiler) be aware of them.
+</p>
+<p>Let’s improve the data structure a bit. Making it generic would allow you to use other types and save you from boilerplate. However, a constraint to use numeric types is required. For this purpose, you can use the Num trait from the num-traits crate.
+</p>
+<p>pub struct Celsius&lt;Value: Num&gt;(pub Value);
+</p>
+<p>Now you can use custom numeric types, and choose the one that is best for your use case.
+</p>
+<p>pub const ABSOLUTE_ZERO_TEMPERATURE: Celsius&lt;f64&gt; = Celsius(-273.15);
+</p>
+<p>This simple format has another important feature: it’s inexpensive from the aspect of memory. If you use the std::mem::size_of function and print out the size of plain numeric types vs wrapped ones, you will get the following values:
+</p>
+<div>
+    <table>
+        <thead>
+            <tr>
+                <th>Type(s)</th>
+                <th>Size (bytes)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>u8, i8</td>
+                <td>1</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;u8&gt;, Celsius&lt;i8&gt;</td>
+                <td>1</td>
+            </tr>
+            <tr>
+                <td>u16, i16</td>
+                <td>2</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;u16&gt;, Celsius&lt;i16&gt;</td>
+                <td>2</td>
+            </tr>
+            <tr>
+                <td>u32, i32</td>
+                <td>4</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;u32&gt;, Celsius&lt;i32&gt;</td>
+                <td>4</td>
+            </tr>
+            <tr>
+                <td>u64, i64</td>
+                <td>8</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;u64&gt;, Celsius&lt;i64&gt;</td>
+                <td>8</td>
+            </tr>
+            <tr>
+                <td>u128, i128</td>
+                <td>16</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;u128&gt;, Celsius&lt;i128&gt;</td>
+                <td>16</td>
+            </tr>
+            <tr>
+                <td>f32</td>
+                <td>4</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;f32&gt;</td>
+                <td>4</td>
+            </tr>
+            <tr>
+                <td>f64</td>
+                <td>8</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;f64gt;</td>
+                <td>8</td>
+            </tr>
+            <tr>
+                <td>BigRational</td>
+                <td>64</td>
+            </tr>
+            <tr>
+                <td>Celsius&lt;BigRational&gt;</td>
+                <td>64</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<p>The table shows that wrapping the numeric types in simple structs like the one defined above will not increase your memory usage.
+</p>
+<p>Similarly to Celsius, there are other units of temperature you can define Kelvin, Fahrenheit:</p>
+<p>pub struct Kelvin&lt;Value: Num&gt;(pub Value);
+</p>
+<p>pub struct Fahrenheit&lt;Value: Num&gt;(pub Value);
+</p>
+<p>and other units of measure.</p>
+<p>In contrast to primitives, these types cannot be cast to one another using the as keyword. Instead, you can use Rust’s standard Into trait for safe conversion, which allows you to place the actual conversion formulas in the implementation. A side note: <a class="link" href="https://floating-point-gui.de/" target="_blank">be careful with the implementation if you are using floating point types.</a></p>
+<p>impl Into&lt;Fahrenheit&lt;f64&gt; for Celsius&lt;f64&gt; {
+</p>
+<p> fn into(self) -&gt; Fahrenheit&lt;f64&gt; {</p>
+<p>Fahrenheit(((self.0 * 1.8 + 32.0) * 1e6).round() / 1e6)
+</p>
+<p>}</p>
+<p>}</p>
+<p>Of course, one can make errors in the implementation, or do ad hoc conversions. The compiler won’t be able to stop one from doing that. That’s where code review and thorough testing come into the picture (which are another part of handling such challenges).
+</p>
+<p>Of course, one can make errors in the implementation, or do ad hoc conversions. The compiler won’t be able to stop one from doing that. That’s where code review and thorough testing come into the picture (which are another part of handling such challenges).</p>
+<p>Speaking of testing, it is worth implementing the PartialEq trait for your types if you want to assert equality. PartialOrd is recommended if you want to compare your values. You can save a lot of writing by using the #[derive] annotation.
+</p>
+<p>#[derive(PartialEq, PartialOrd, Debug)]</p>
+<p>pub struct Celsius&lt;Value: Num&gt;(pub Value);</p>
+<p>Debug is useful if you want to print your values (when your unit tests fail, for instance). Now you can do things such as
+</p>
+<p>assert_eq!(
+</p>
+<p>Fahrenheit(-459.67),</p>
+<p>ABSOLUTE_ZERO_TEMPERATURE.into()</p>
+<p>);</p>
+<p>and</p>
+<p>assert!(</p>
+<p>Celsius(2) &gt; Celsius(1)</p>
+<p>);</p>
+<p>You can do a lot more with derive. With the release of Rust version 1.30, procedural macros have become part of stable Rust. On of the features of procedural macros is that you can define custom derives, which is really useful for automating implementation of simple traits. Take the derive_more crate for example: it has macros that automatically implement operator overloading for simple structs, such as the types defined here.</p>
+<p>#[derive(Add, Div, Mul, Sub, PartialEq, PartialOrd, Debug)]</p>
+<p>pub struct Celsius&lt;Value: Num&gt;(pub Value);</p>
+<p>Now you can perform arithmetic on units of measure without unwrapping. You can add or subtract the same units of measure (attempting to add Celsius and Fahrenheit for example will result in a compilation error), and multiply or divide them with numbers of their Value type.</p>
+<p>As a practical example for arithmetic, here’s a function that calculates the mean temperature based on a collection of values in Celsius:</p>
+<p>pub fn mean_temperature(values: Vec&lt;Celsius&lt;f64&gt;&gt;) -&gt; Celsius&lt;f64&gt; {
+</p>
+<p>let len = values.len();</p>
+<p>if len == 0 {</p>
+<p>Celsius(0.0)</p>
+<p>} else {</p>
+<p>values.into_iter().fold(Celsius(0.0), |acc, temp| acc + temp) / (len as f64)</p>
+<p>}</p>
+<p>}</p>
+<p></p>
+<p>assert_eq!(</p>
+<p>Celsius(11.5),</p>
+<p>mean_temperature(vec![Celsius(11.3), Celsius(12.3), Celsius(10.9)])</p>
+<p>);</p>
+<p>If you want to make the mean_temperature function more readable, you can implement the Sum trait for Celsius (see the full code on GitHub). Or, to save some energy, you can create a derive macro that does the job for all units-of-measure-kind-of types.</p>
+<p>Then you can write mean_temprature as</p>
+<p>pub fn mean_temperature(values: Vec&lt;Celsius&lt;f64&gt;&gt;) -&gt; Celsius&lt;f64&gt; {
+</p>
+<p>let len = values.len();</p>
+<p>if len == 0 { Celsius(0.0) } else {</p>
+<p>let sum: Celsius&lt;f64&gt; = values.into_iter().sum();</p>
+<p>sum / (len as f64)</p>
+<p>}</p>
+<p>}</p>
+<p>Wrapping it up, using Rust you can find a really simple and flexible generic solution to represent units of measure, which allows you to add extra information to numeric types without memory overhead. Adding implementations of the From/Into trait provides safe conversion between the types. With the derive annotation, you can automate trait implementations quite easily. Furthermore, procedural macros can save you a lot of work and help you add useful features to your types.</p>
+<p>You should keep in mind that this is only one way of doing this. You might consider other options when you encounter such a challenge, and should explore the opportunities provided by your language of choice. Since units of measure are implicitly part of everyday life (and therefore part of everyday engineering), I’m sure these challenges will come really soon.</p>
+<p></p>
+<p></p>
+<p></p>
+</body>
+</html>
